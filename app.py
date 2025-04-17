@@ -31,6 +31,11 @@ audio_file = st.file_uploader("Upload an audio file (optional)", type=["mp3", "w
 # Image input for emotions (upload button)
 image_file = st.file_uploader("Upload an image (optional)", type=["jpg", "png"])
 
+# Initialize emotion variables
+text_emotion = None
+speech_emotion = None
+face_emotion = None
+
 if text_input:
     # Process text emotion
     text_emotion = text_detector.predict(text_input)
@@ -57,12 +62,15 @@ if image_file:
     except Exception as e:
         st.error(f"Error processing image: {str(e)}")
 
-# Fuse emotions
-dominant_emotion = emotion_fusion.fuse_emotions(text_emotion, speech_emotion, face_emotion)
-st.write(f"Dominant emotion: {dominant_emotion}")
+# If any emotion is detected, fuse emotions
+if text_emotion or speech_emotion or face_emotion:
+    dominant_emotion = emotion_fusion.fuse_emotions(text_emotion, speech_emotion, face_emotion)
+    st.write(f"Dominant emotion: {dominant_emotion}")
 
-# Generate prompt with emotion context
-prompt = prompt_generator.generate_prompt(dominant_emotion, text_input)
-response = llm_client.run(prompt)
-
-st.write(f"Chatbot response: {response}")
+    # Generate prompt with emotion context
+    prompt = prompt_generator.generate_prompt(dominant_emotion, text_input)
+    response = llm_client.run(prompt)
+    
+    st.write(f"Chatbot response: {response}")
+else:
+    st.write("Please provide some input (text, audio, or image) to detect emotions.")
