@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mental Health Chatbot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #f0f2f5;
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+    }
+    .chat-container {
+      background: #fff;
+      border-radius: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 600px;
+      margin-top: 50px;
+      padding: 20px;
+    }
+    .chat-box {
+      max-height: 400px;
+      overflow-y: auto;
+      padding-bottom: 10px;
+    }
+    .message {
+      margin: 10px 0;
+      padding: 10px 15px;
+      border-radius: 12px;
+      line-height: 1.4;
+    }
+    .user-message {
+      background: #e0f7fa;
+      align-self: flex-end;
+      text-align: right;
+    }
+    .bot-message {
+      background: #f1f1f1;
+      align-self: flex-start;
+    }
+    .input-area {
+      display: flex;
+      margin-top: 15px;
+    }
+    input[type="text"] {
+      flex-grow: 1;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    button {
+      margin-left: 10px;
+      padding: 12px 20px;
+      background-color: #4caf50;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .media-controls {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+    }
+    .media-button {
+      padding: 10px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .media-button:hover {
+      background-color: #0b7dda;
+    }
+    .media-button.recording {
+      background-color: #f44336;
+    }
+    .media-button.recording:hover {
+      background-color: #d32f2f;
+    }
+    .emotion-display {
+      margin-top: 10px;
+      font-style: italic;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+<div class="chat-container">
+  <h2 style="text-align:center;">Mental Health Chatbot</h2>
+  <div class="chat-box" id="chatBox"></div>
+  <div class="input-area">
+    <input type="text" id="userInput" placeholder="Type how you're feeling..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+  <div class="media-controls">
+    <button id="audioButton" class="media-button" onclick="toggleAudioRecording()">Record Audio</button>
+    <button id="cameraButton" class="media-button" onclick="toggleCamera()">Take Photo</button>
+  </div>
+  <div id="emotionDisplay" class="emotion-display"></div>
+</div>
+
+<script>
+  let mediaRecorder;
+  let audioChunks = [];
+  let isRecording = false;
+  let stream = null;
+  let video = null;
+  let canvas = null;
+  let isCameraActive = false;
+
+  // Handle text message sending
+  async function sendMessage() {
+    const input = document.getElementById("userInput");
+    const chatBox = document.getElementById("chatBox");
+    const userMessage = input.value.trim();
+    if (!userMessage) return;
+    
+    // Add user message to chat
+    const userDiv = document.createElement("div");
+    userDiv.className = "message user-message";
+    userDiv.innerText = userMessage;
+    chatBox.appendChild(userDiv);
+    input.value = "";
+    
+    // Prepare data for API
+    const data = { text: userMessage };
+    
+    // Add audio if available
+    if (audioChunks.length > 0) {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      reader.onloadend = async function() {
+        data.audio = reader.result;
+        sendToAPI(data);
+      };
+    } else {
+      sendToAPI(data);
+    }
+  }
+  
+  // Send data to API
+  async function sendToAPI(data) {
+    const chatBox = document.getElementById("chatBox");
+    const emotionDisplay = document.getElementById("emotionDisplay");
+    
+    try {
+      const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      
+      const result = await response.json();
+      
+      // Display emotion
+      emotionDisplay.textContent = `Detected Emotion: ${result.emotion}`;
+      
+      // Add bot response to chat
+      const botDiv = document.createElement("div");
+      botDiv.className = "message bot-message";
+      botDiv.innerText = result.response;
+      chatBox.appendChild(botDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      
+      // Reset audio chunks
+      audioChunks = [];
+    } catch (error) {
+      console.error("Error:", error);
+      const errorDiv = document.createElement("div");
+      errorDiv.className = "message bot-message";
+      errorDiv.innerText = "Sorry, there was an error processing your request.";
+      chatBox.appendChild(errorDiv);
+    }
+  }
+  
+  // Toggle audio recording
+  async function toggleAudioRecording() {
+    const audioButton = document.getElementById("audioButton");
+    
+    if (!isRecording) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          console.log("Audio recorded:", audioBlob);
+        };
+        
+        mediaRecorder.start();
+        isRecording = true;
+        audioButton.textContent = "Stop Recording";
+        audioButton.classList.add("recording");
+      } catch (error) {
+        console.error("Error accessing microphone:", error);
+        alert("Could not access microphone. Please check permissions.");
+      }
+    } else {
+      mediaRecorder.stop();
+      stream.getTracks().forEach(track => track.stop());
+      isRecording = false;
+      audioButton.textContent = "Record Audio";
+      audioButton.classList.remove("recording");
+    }
+  }
+  
+  // Toggle camera
+  async function toggleCamera() {
+    const cameraButton = document.getElementById("cameraButton");
+    
+    if (!isCameraActive) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        
+        // Create video element if it doesn't exist
+        if (!video) {
+          video = document.createElement("video");
+          video.autoplay = true;
+          video.style.width = "100%";
+          video.style.marginTop = "10px";
+          document.querySelector(".chat-container").insertBefore(video, document.getElementById("emotionDisplay"));
+        }
+        
+        video.srcObject = stream;
+        isCameraActive = true;
+        cameraButton.textContent = "Take Photo";
+        
+        // Create canvas if it doesn't exist
+        if (!canvas) {
+          canvas = document.createElement("canvas");
+          canvas.style.display = "none";
+          document.body.appendChild(canvas);
+        }
+      } catch (error) {
+        console.error("Error accessing camera:", error);
+        alert("Could not access camera. Please check permissions.");
+      }
+    } else {
+      // Take photo
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+      
+      // Convert to base64
+      const imageData = canvas.toDataURL("image/jpeg");
+      
+      // Stop camera
+      stream.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+      isCameraActive = false;
+      cameraButton.textContent = "Take Photo";
+      
+      // Add image to data for next message
+      const data = { text: document.getElementById("userInput").value.trim() };
+      data.image = imageData;
+      
+      // Send to API
+      sendToAPI(data);
+    }
+  }
+  
+  // Handle Enter key in input field
+  document.getElementById("userInput").addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+      sendMessage();
+    }
+  });
+</script>
+</body>
+</html> 
