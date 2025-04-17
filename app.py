@@ -1,20 +1,15 @@
-from flask import Flask, render_template, request, jsonify
-import cv2
-import numpy as np
-from PIL import Image
-import tempfile
-import os
-import base64
-import io
-
+import streamlit as st
 from models.text_emotion import TextEmotionDetector
 from models.speech_emotion import SpeechEmotionDetector
 from models.face_emotion import FaceEmotionDetector
 from models.emotion_fusion import EmotionFusion
 from models.prompt_generator import PromptGenerator
 from models.langchain_client import LangChainClient
-
-app = Flask(__name__)
+import base64
+import tempfile
+import os
+from PIL import Image
+import numpy as np
 
 # Initialize models
 text_detector = TextEmotionDetector()
@@ -24,58 +19,50 @@ emotion_fusion = EmotionFusion()
 prompt_generator = PromptGenerator()
 llm_client = LangChainClient()
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+# Streamlit UI setup
+st.title("Mental Health Chatbot")
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    data = request.json
-    text_input = data.get('text', '')
-    
+# Text input for emotions
+text_input = st.text_input("Enter your text:")
+
+# Audio input for emotions (upload button)
+audio_file = st.file_uploader("Upload an audio file (optional)", type=["mp3", "wav"])
+
+# Image input for emotions (upload button)
+image_file = st.file_uploader("Upload an image (optional)", type=["jpg", "png"])
+
+if text_input:
     # Process text emotion
-    text_emotion = None
-    if text_input:
-        text_emotion = text_detector.predict(text_input)
-    
-    # Process audio if provided
-    speech_emotion = None
-    if 'audio' in data and data['audio']:
-        try:
-            # Decode base64 audio
-            audio_data = base64.b64decode(data['audio'].split(',')[1])
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
-                tmp_file.write(audio_data)
-                speech_emotion = speech_detector.predict(tmp_file.name)
-                os.unlink(tmp_file.name)
-        except Exception as e:
-            print(f"Error processing audio: {str(e)}")
-    
-    # Process image if provided
-    face_emotion = None
-    if 'image' in data and data['image']:
-        try:
-            # Decode base64 image
-            image_data = base64.b64decode(data['image'].split(',')[1])
-            image = Image.open(io.BytesIO(image_data))
-            image_np = np.array(image)
-            face_emotion = face_detector.predict(image_np)
-        except Exception as e:
-            print(f"Error processing image: {str(e)}")
-    
-    # Fuse emotions
-    dominant_emotion = emotion_fusion.fuse_emotions(text_emotion, speech_emotion, face_emotion)
-    
-    # Generate prompt with emotion context
-    prompt = prompt_generator.generate_prompt(dominant_emotion, text_input)
-    
-    # Use LangChain's run method to process the input with memory
-    response = llm_client.run(prompt)
-    
-    return jsonify({
-        "emotion": dominant_emotion,
-        "response": response
-    })
+    text_emotion = text_detector.predict(text_input)
+    st.write(f"Detected emotion from text: {text_emotion}")
 
-if __name__ == '__main__':
-    app.run(debug=True) 
+if audio_file:
+    try:
+        audio_data = audio_file.read()
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
+            tmp_file.write(audio_data)
+            speech_emotion = speech_detector.predict(tmp_file.name)
+            os.unlink(tmp_file.name)
+            st.write(f"Detected emotion from speech: {speech_emotion}")
+    except Exception as e:
+        st.error(f"Error processing audio: {str(e)}")
+
+if image_file:
+    try:
+        image = Image.open(image_file)
+        image_np = np.array(image)
+        face_emotion = face_detector.predict(image_np)
+        st.image(image, caption='Uploaded Image', use_column_width=True)
+        st.write(f"Detected emotion from face: {face_emotion}")
+    except Exception as e:
+        st.error(f"Error processing image: {str(e)}")
+
+# Fuse emotions
+dominant_emotion = emotion_fusion.fuse_emotions(text_emotion, speech_emotion, face_emotion)
+st.write(f"Dominant emotion: {dominant_emotion}")
+
+# Generate prompt with emotion context
+prompt = prompt_generator.generate_prompt(dominant_emotion, text_input)
+response = llm_client.run(prompt)
+
+st.write(f"Chatbot response: {response}")
