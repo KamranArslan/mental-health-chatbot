@@ -57,7 +57,7 @@ if image_file:
         image = Image.open(image_file)
         image_np = np.array(image)
         face_emotion = face_detector.predict(image_np)
-        st.image(image, caption='Uploaded Image', use_column_width=True)
+        st.image(image_np, caption='Uploaded Image', use_container_width=True)
         st.write(f"Detected emotion from face: {face_emotion}")
     except Exception as e:
         st.error(f"Error processing image: {str(e)}")
