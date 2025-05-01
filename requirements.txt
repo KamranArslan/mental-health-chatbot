@@ -1,14 +1,25 @@
+# Transformers and AI Model Libraries
 transformers==4.30.0         # Pinning the version to avoid breaking changes with updates
 torch==2.0.0                 # Pinning version for compatibility
 tensorflow==2.12.0           # Ensuring stable version, pinning
+
+# Web Framework
 flask==2.0.0                 # Specify the exact version for stability
+
+# Network Request Library
 requests==2.28.0             # Keep this for network request compatibility
+
+# Scientific Computing and Image Processing
 numpy==1.24.0                # Pin version for compatibility with your dependencies
 pillow==9.5.0                # Specific version
 soundfile==0.12.1            # Keep the current version as-is unless issues arise
-librosa==0.10.0             # Pin to a stable version
+librosa==0.10.0              # Pin to a stable version
 opencv-python==4.7.0         # Pin for compatibility with your OpenCV usage
+
+# Environment Variable Management
 python-dotenv==1.0.0         # Stable version, no changes needed
+
+# Groq and LangChain for LLM Integration
 groq==0.3.0                  # Confirm compatibility with your setup, if new, keep the version range
 langchain==0.1.0             # Be cautious if there are breaking changes, pinning for stability
 langchain-groq==0.0.1        # Make sure this package is working correctly with `langchain`
