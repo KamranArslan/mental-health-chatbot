@@ -38,4 +38,4 @@ class FaceEmotionDetector:
             
         predictions = self.model.predict(processed_image)
         predicted_class = np.argmax(predictions[0])
-        return self.emotions[predicted_class] 
+        return self.emotions[predicted_class]
