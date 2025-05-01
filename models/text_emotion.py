@@ -3,8 +3,8 @@ import torch
 
 class TextEmotionDetector:
     def __init__(self, model_path="models/text_model"):
-        # Force CPU for compatibility
-        self.device = torch.device("cpu")
+        # Force CPU for compatibility, but you can enable GPU if available
+        self.device = torch.device("cpu")  # You can change this to "cuda" for GPU if available
 
         # Load tokenizer and model
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -16,7 +16,7 @@ class TextEmotionDetector:
         self.emotions = ["anger", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"]
 
     def predict(self, text):
-        # Tokenize input and move to device
+        # Tokenize input and move to device (CPU or GPU)
         inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
