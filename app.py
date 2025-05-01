@@ -71,38 +71,15 @@ if text_input or audio_file or image_file:
     st.write(f"Dominant emotion: {dominant_emotion}")
 
     # Therapeutic suggestions dictionary
-  suggestions = {
-    "anger": "Take a deep breath and count to ten. Step away from the situation if needed.",
-    "sadness": "You're not alone. Reach out to someone you trust or write down your thoughts.",
-    "fear": "Try grounding techniques like 5-4-3-2-1 to stay present.",
-    "happiness": "Celebrate your joy! Share your moment with someone close.",
-    "disgust": "Pause and reflect. Try to reframe or distance from the triggering situation.",
-    "surprise": "Take time to process what happened. Talk it out if needed.",
-    "neutral": "Stay mindful. Even neutral states can offer moments of clarity.",
-    "anxiety": "Breathe in for 4, hold for 4, out for 4. Repeat. You're in control.",
-    "confusion": "Break things down into smaller pieces. It's okay to ask questions.",
-    "loneliness": "Reach out—even a small interaction can help. You matter.",
-    "hope": "Keep feeding that hope with small steps forward. You're doing great.",
-    "boredom": "Try something creative or new—a short walk, journaling, or music.",
-    "guilt": "Forgive yourself. Learn from it and let it go—you deserve compassion too.",
-    "shame": "You're human, and flaws don't define you. Speak kindly to yourself.",
-    "excitement": "Channel this into something productive or expressive. Embrace the spark.",
-    "pride": "Be proud of your accomplishments—share them or reflect on your growth.",
-    "jealousy": "Acknowledge it without judgment. Use it to inspire growth.",
-    "embarrassment": "It’s okay—everyone messes up. Laugh it off and move on.",
-    "relief": "Enjoy this moment of ease. Take time to recharge.",
-    "insecurity": "You are enough. Focus on your strengths, not your doubts.",
-    "grief": "Let yourself feel. Grieving is not linear, and healing takes time.",
-    "overwhelmed": "Make a simple list. Focus on one thing at a time. Breathe.",
-    "burnout": "Rest is productive. You don’t have to earn a break—you need it.",
-    "trust": "Let trust grow naturally. Keep communicating clearly.",
-    "distrust": "Protect your boundaries, but remain open to healing connections.",
-    "love": "Share your feelings or express them in a kind gesture. Love grows when shared.",
-    "frustration": "Step back, take a break, then return with a fresh mind.",
-    "inspiration": "Use this energy to create or plan something meaningful.",
-    "curiosity": "Explore safely and ask questions—learning is a great path to peace.",
-    "emptiness": "Try reconnecting with activities or people that bring meaning.",
-}
+    suggestions = {
+        "anger": "Take a deep breath and count to ten. Step away from the situation if needed.",
+        "disgust": "Pause and reflect. Try to reframe or distance from the triggering situation.",
+        "fear": "Try grounding techniques like 5-4-3-2-1 to stay present.",
+        "happiness": "Celebrate your joy! Share your moment with someone close.",
+        "neutral": "Stay mindful. Even neutral states can offer moments of clarity.",
+        "sadness": "You're not alone. Reach out to someone you trust or write down your thoughts.",
+        "surprise": "Take time to process what happened. Talk it out if needed."
+    }
 
     # Generate prompt with emotional context and conversation history
     prompt = prompt_generator.generate_prompt(dominant_emotion, text_input)
@@ -118,6 +95,9 @@ if text_input or audio_file or image_file:
     st.session_state.chat_history.append(("User", text_input))
     st.session_state.chat_history.append(("Bot", full_response))
 
+    # Continuously updating emotional state and conversation history
+    st.session_state.last_emotion = dominant_emotion
+
 # Display conversation history
 st.subheader("Conversation")
 for speaker, message in st.session_state.chat_history:
@@ -125,3 +105,38 @@ for speaker, message in st.session_state.chat_history:
         st.markdown(f"**You:** {message}")
     else:
         st.markdown(f"**Chatbot:** {message}")
+
+# Enable multi-turn conversation with continuous emotional context
+if st.button("Continue Conversation"):
+    # User enters a follow-up message
+    follow_up_input = st.text_input("How are you feeling now? (Follow-up message)")
+
+    if follow_up_input:
+        # Re-run emotion detection on the new input
+        new_text_emotion = text_detector.predict(follow_up_input)
+        st.write(f"Detected emotion from follow-up text: {new_text_emotion}")
+
+        # Update the dominant emotion
+        updated_emotion = emotion_fusion.fuse_emotions(new_text_emotion, None, None)
+        st.session_state.last_emotion = updated_emotion
+
+        # Generate a new prompt based on the updated emotional context
+        prompt = prompt_generator.generate_prompt(updated_emotion, follow_up_input)
+
+        # Send to LLM client for updated response
+        updated_response = llm_client.run(prompt)
+
+        # Combine new LLM response with a new coping suggestion
+        new_suggestion = suggestions.get(updated_emotion.lower(), "")
+        full_updated_response = f"{updated_response}\n Therapeutic Suggestion: {new_suggestion}"
+
+        # Update the conversation history
+        st.session_state.chat_history.append(("User", follow_up_input))
+        st.session_state.chat_history.append(("Bot", full_updated_response))
+
+        # Display updated conversation
+        for speaker, message in st.session_state.chat_history:
+            if speaker == "User":
+                st.markdown(f"**You:** {message}")
+            else:
+                st.markdown(f"**Chatbot:** {message}")
