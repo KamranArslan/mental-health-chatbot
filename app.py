@@ -82,14 +82,14 @@ if text_input or audio_file or image_file:
     }
 
     # Generate prompt with emotional context and conversation history
-    prompt = prompt_generator.generate_prompt(dominant_emotion, text_input)
+    prompt = prompt_generator.generate_prompt(dominant_emotion, text_input, st.session_state.chat_history)
 
     # Send to LLM client with memory
     response = llm_client.run(prompt)
 
     # Combine LLM response with coping suggestion
     suggestion = suggestions.get(dominant_emotion.lower(), "")
-    full_response = f"{response}\n Therapeutic Suggestion: {suggestion}"
+    full_response = f"{response}\n\nTherapeutic Suggestion: {suggestion}"
 
     # Update chat history
     st.session_state.chat_history.append(("User", text_input))
@@ -121,14 +121,14 @@ if st.button("Continue Conversation"):
         st.session_state.last_emotion = updated_emotion
 
         # Generate a new prompt based on the updated emotional context
-        prompt = prompt_generator.generate_prompt(updated_emotion, follow_up_input)
+        prompt = prompt_generator.generate_prompt(updated_emotion, follow_up_input, st.session_state.chat_history)
 
         # Send to LLM client for updated response
         updated_response = llm_client.run(prompt)
 
         # Combine new LLM response with a new coping suggestion
         new_suggestion = suggestions.get(updated_emotion.lower(), "")
-        full_updated_response = f"{updated_response}\n Therapeutic Suggestion: {new_suggestion}"
+        full_updated_response = f"{updated_response}\n\nTherapeutic Suggestion: {new_suggestion}"
 
         # Update the conversation history
         st.session_state.chat_history.append(("User", follow_up_input))
