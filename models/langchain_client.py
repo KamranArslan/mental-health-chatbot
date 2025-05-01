@@ -27,12 +27,13 @@ class LangChainClient:
             return_messages=True
         )
         
-        # Create a chat prompt template that includes the conversation history
+        # Create a chat prompt template that includes the conversation history and dominant emotion
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a supportive and empathetic mental health chatbot. "
                       "You provide therapeutic responses based on the user's emotional state. "
                       "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
-                      "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood."),
+                      "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
+                      "The user's dominant emotion is: {dominant_emotion}"),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}")
         ])
@@ -44,17 +45,22 @@ class LangChainClient:
             prompt=self.prompt
         )
     
-    def run(self, user_input):
+    def run(self, user_input, dominant_emotion=None):
         """
         Process user input through the LangChain chain with memory.
         
         Args:
             user_input (str): The user's message
+            dominant_emotion (str): The dominant emotion detected (optional)
             
         Returns:
             str: The AI's response
         """
         try:
+            if dominant_emotion:
+                # Update the conversation history with the emotional context
+                self.memory.chat_memory.add_message("system", f"Dominant emotion: {dominant_emotion}")
+
             # Run the chain with the user input
             response = self.chain.invoke({"input": user_input})
             return response["text"]
@@ -68,4 +74,4 @@ class LangChainClient:
         Returns:
             list: The conversation history as a list of messages
         """
-        return self.memory.chat_memory.messages 
+        return self.memory.chat_memory.messages
