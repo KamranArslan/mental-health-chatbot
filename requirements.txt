@@ -1,6 +1,6 @@
 # Transformers and AI Model Libraries
 transformers==4.31.0         # Updated to the latest version for improvements
-torch==2.0.0                 # Pinning version for compatibility, verify CUDA compatibility
+torch==2.4.0                 # Updated to a stable available version
 tensorflow==2.13.0           # Latest stable version with improvements
 
 # Web Framework
