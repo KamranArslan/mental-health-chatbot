@@ -7,11 +7,13 @@ from langchain.chains import LLMChain
 
 class LangChainClient:
     def __init__(self):
+        # Load environment variables and check for missing GROQ_API_KEY
         load_dotenv()
         self.api_key = os.getenv("GROQ_API_KEY")
+        
         if not self.api_key:
             raise ValueError("GROQ_API_KEY not found in environment variables")
-        
+
         # Initialize the Groq LLM
         self.llm = ChatGroq(
             api_key=self.api_key,
@@ -58,7 +60,7 @@ class LangChainClient:
         """
         try:
             if dominant_emotion:
-                # Update the conversation history with the emotional context
+                # Only add dominant emotion to memory if it's provided
                 self.memory.chat_memory.add_message("system", f"Dominant emotion: {dominant_emotion}")
 
             # Run the chain with the user input
@@ -74,4 +76,8 @@ class LangChainClient:
         Returns:
             list: The conversation history as a list of messages
         """
-        return self.memory.chat_memory.messages
+        # Format the conversation history in a more human-readable format
+        formatted_history = []
+        for message in self.memory.chat_memory.messages:
+            formatted_history.append(f"{message['role']}: {message['content']}")
+        return formatted_history
