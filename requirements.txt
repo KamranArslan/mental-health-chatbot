@@ -1,25 +1,14 @@
-# Transformers and AI Model Libraries
-transformers==4.31.0         # Updated to the latest version for improvements
-torch==2.4.0                 # Updated to a stable available version
-tensorflow==2.13.0           # Latest stable version with improvements
-
-# Web Framework
-flask==2.3.2                 # Updated to the latest stable version for performance & security fixes
-
-# Network Request Library
-requests==2.28.0             # Keep this for network request compatibility
-
-# Scientific Computing and Image Processing
-numpy==1.24.0                # Pin version for compatibility with your dependencies
-pillow==9.5.0                # Specific version
-soundfile==0.12.1            # Keep the current version as-is unless issues arise
-librosa==0.10.0              # Pin to a stable version
-opencv-python==4.7.0         # Pin for compatibility with your OpenCV usage
-
-# Environment Variable Management
-python-dotenv==1.0.0         # Stable version, no changes needed
-
-# Groq and LangChain for LLM Integration
-groq==0.3.0                  # Confirm compatibility with your setup
-langchain==0.2.0             # Newer stable version of LangChain, adjust if needed
-langchain-groq==0.0.1        # Make sure this package works with the latest LangChain
+transformers>=4.30.0
+torch>=2.0.0
+tensorflow>=2.12.0
+flask>=2.0.0
+requests>=2.28.0
+numpy>=1.24.0
+pillow>=9.5.0
+soundfile>=0.12.1
+librosa>=0.10.0
+opencv-python>=4.7.0
+python-dotenv>=1.0.0
+groq>=0.3.0
+langchain>=0.1.0
+langchain-groq>=0.0.1 
