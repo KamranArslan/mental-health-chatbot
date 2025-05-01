@@ -10,23 +10,27 @@ class PromptGenerator:
             "surprise": "I notice you seem surprised. This can be both positive and challenging. Would you like to talk about what caught you off guard?"
         }
 
-    def generate_prompt(self, emotion, user_input=""):
+    def generate_prompt(self, emotion, user_input="", previous_conversation=""):
         """
-        Generate a prompt that includes emotion context and user input.
+        Generate a prompt that includes emotion context, user input, and conversation history.
         
         Args:
             emotion (str): The detected emotion
             user_input (str): The user's message
+            previous_conversation (str): The prior conversation context to keep continuity
             
         Returns:
             str: A formatted prompt for the LLM
         """
         # Get the base prompt for the detected emotion
         base_prompt = self.emotion_prompts.get(emotion, self.emotion_prompts["neutral"])
+
+        if previous_conversation:
+            # For a continuous conversation, include the prior conversation context for memory continuity
+            return f"{base_prompt}\n\n{previous_conversation}\n\nUser: {user_input}"
         
         if user_input:
-            # For LangChain, we'll format the prompt to include the emotion context
-            # but let the conversation memory handle the actual dialogue flow
+            # For the first interaction or no prior conversation, include just the emotion context and user input
             return f"{base_prompt}\n\nUser: {user_input}"
         
         return base_prompt
