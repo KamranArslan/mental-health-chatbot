@@ -19,10 +19,9 @@ emotion_fusion = EmotionFusion()
 prompt_generator = PromptGenerator()
 llm_client = LangChainClient()
 
-# Streamlit UI setup
 st.title("Mental Health Chatbot")
 
-# --- Initialize session state ---
+# Initialize session state
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
@@ -35,11 +34,9 @@ audio_file = st.file_uploader("Upload an audio file (optional)", type=["mp3", "w
 image_file = st.file_uploader("Upload an image (optional)", type=["jpg", "png"])
 
 # Emotion detection
-text_emotion = None
-speech_emotion = None
-face_emotion = None
+text_emotion = speech_emotion = face_emotion = None
 
-if text_input:
+if text_input.strip():
     text_emotion = text_detector.predict(text_input)
     st.write(f"Detected emotion from text: {text_emotion}")
 
@@ -65,12 +62,13 @@ if image_file:
         st.error(f"Error processing image: {str(e)}")
 
 # Fuse emotions and respond
-if text_input or audio_file or image_file:
+if text_input.strip() or audio_file or image_file:
     dominant_emotion = emotion_fusion.fuse_emotions(text_emotion, speech_emotion, face_emotion)
+    if dominant_emotion is None:
+        dominant_emotion = "neutral"
     st.session_state.last_emotion = dominant_emotion
     st.write(f"Dominant emotion: {dominant_emotion}")
 
-    # Therapeutic suggestions dictionary
     suggestions = {
         "anger": "Take a deep breath and count to ten. Step away from the situation if needed.",
         "disgust": "Pause and reflect. Try to reframe or distance from the triggering situation.",
@@ -81,62 +79,40 @@ if text_input or audio_file or image_file:
         "surprise": "Take time to process what happened. Talk it out if needed."
     }
 
-    # Generate prompt with emotional context and conversation history
     prompt = prompt_generator.generate_prompt(dominant_emotion, text_input, st.session_state.chat_history)
-
-    # Send to LLM client with memory
     response = llm_client.run(prompt)
-
-    # Combine LLM response with coping suggestion
     suggestion = suggestions.get(dominant_emotion.lower(), "")
     full_response = f"{response}\n\nTherapeutic Suggestion: {suggestion}"
 
-    # Update chat history
     st.session_state.chat_history.append(("User", text_input))
     st.session_state.chat_history.append(("Bot", full_response))
 
-    # Continuously updating emotional state and conversation history
-    st.session_state.last_emotion = dominant_emotion
+def display_chat_history():
+    for speaker, message in st.session_state.chat_history:
+        if speaker == "User":
+            st.markdown(f"**You:** {message}", use_container_width=True)
+        else:
+            st.markdown(f"**Chatbot:** {message}", use_container_width=True)
 
-# Display conversation history
 st.subheader("Conversation")
-for speaker, message in st.session_state.chat_history:
-    if speaker == "User":
-        st.markdown(f"**You:** {message}")
-    else:
-        st.markdown(f"**Chatbot:** {message}")
+display_chat_history()
 
-# Enable multi-turn conversation with continuous emotional context
-if st.button("Continue Conversation"):
-    # User enters a follow-up message
-    follow_up_input = st.text_input("How are you feeling now? (Follow-up message)")
+follow_up_input = st.text_input("How are you feeling now? (Follow-up message)")
+if st.button("Continue Conversation") and follow_up_input.strip():
+    new_text_emotion = text_detector.predict(follow_up_input)
+    st.write(f"Detected emotion from follow-up text: {new_text_emotion}")
 
-    if follow_up_input:
-        # Re-run emotion detection on the new input
-        new_text_emotion = text_detector.predict(follow_up_input)
-        st.write(f"Detected emotion from follow-up text: {new_text_emotion}")
+    updated_emotion = emotion_fusion.fuse_emotions(new_text_emotion, None, None)
+    if updated_emotion is None:
+        updated_emotion = "neutral"
+    st.session_state.last_emotion = updated_emotion
 
-        # Update the dominant emotion
-        updated_emotion = emotion_fusion.fuse_emotions(new_text_emotion, None, None)
-        st.session_state.last_emotion = updated_emotion
+    prompt = prompt_generator.generate_prompt(updated_emotion, follow_up_input, st.session_state.chat_history)
+    updated_response = llm_client.run(prompt)
+    new_suggestion = suggestions.get(updated_emotion.lower(), "")
+    full_updated_response = f"{updated_response}\n\nTherapeutic Suggestion: {new_suggestion}"
 
-        # Generate a new prompt based on the updated emotional context
-        prompt = prompt_generator.generate_prompt(updated_emotion, follow_up_input, st.session_state.chat_history)
+    st.session_state.chat_history.append(("User", follow_up_input))
+    st.session_state.chat_history.append(("Bot", full_updated_response))
 
-        # Send to LLM client for updated response
-        updated_response = llm_client.run(prompt)
-
-        # Combine new LLM response with a new coping suggestion
-        new_suggestion = suggestions.get(updated_emotion.lower(), "")
-        full_updated_response = f"{updated_response}\n\nTherapeutic Suggestion: {new_suggestion}"
-
-        # Update the conversation history
-        st.session_state.chat_history.append(("User", follow_up_input))
-        st.session_state.chat_history.append(("Bot", full_updated_response))
-
-        # Display updated conversation
-        for speaker, message in st.session_state.chat_history:
-            if speaker == "User":
-                st.markdown(f"**You:** {message}")
-            else:
-                st.markdown(f"**Chatbot:** {message}")
+    display_chat_history()
