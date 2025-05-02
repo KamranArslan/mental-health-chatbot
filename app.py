@@ -5,7 +5,6 @@ from models.face_emotion import FaceEmotionDetector
 from models.emotion_fusion import EmotionFusion
 from models.prompt_generator import PromptGenerator
 from models.langchain_client import LangChainClient
-import base64
 import tempfile
 import os
 from PIL import Image
@@ -19,26 +18,26 @@ emotion_fusion = EmotionFusion()
 prompt_generator = PromptGenerator()
 llm_client = LangChainClient()
 
-st.title("Mental Health Chatbot")
+# Session state initialization
+st.title("🧠 Mental Health Chatbot")
 
-# Initialize session state
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
 if 'last_emotion' not in st.session_state:
     st.session_state.last_emotion = None
 
-# Input widgets
-text_input = st.text_input("Enter your message:")
-audio_file = st.file_uploader("Upload an audio file (optional)", type=["mp3", "wav"])
-image_file = st.file_uploader("Upload an image (optional)", type=["jpg", "png"])
+# Input section
+text_input = st.text_input("💬 Enter your message:")
+audio_file = st.file_uploader("🎙️ Upload an audio file (optional)", type=["mp3", "wav"])
+image_file = st.file_uploader("🖼️ Upload an image (optional)", type=["jpg", "png"])
 
 # Emotion detection
 text_emotion = speech_emotion = face_emotion = None
 
 if text_input.strip():
     text_emotion = text_detector.predict(text_input)
-    st.write(f"Detected emotion from text: {text_emotion}")
+    st.write(f"**📝 Text emotion:** {text_emotion}")
 
 if audio_file:
     try:
@@ -47,9 +46,9 @@ if audio_file:
             tmp_file.write(audio_data)
             speech_emotion = speech_detector.predict(tmp_file.name)
             os.unlink(tmp_file.name)
-            st.write(f"Detected emotion from speech: {speech_emotion}")
+        st.write(f"**🎧 Speech emotion:** {speech_emotion}")
     except Exception as e:
-        st.error(f"Error processing audio: {str(e)}")
+        st.error(f"⚠️ Error processing audio: {str(e)}")
 
 if image_file:
     try:
@@ -57,17 +56,16 @@ if image_file:
         image_np = np.array(image)
         face_emotion = face_detector.predict(image_np)
         st.image(image_np, caption='Uploaded Image', use_container_width=True)
-        st.write(f"Detected emotion from face: {face_emotion}")
+        st.write(f"**📷 Face emotion:** {face_emotion}")
     except Exception as e:
-        st.error(f"Error processing image: {str(e)}")
+        st.error(f"⚠️ Error processing image: {str(e)}")
 
-# Fuse emotions and respond
+# Fuse emotions and get response
 if text_input.strip() or audio_file or image_file:
     dominant_emotion = emotion_fusion.fuse_emotions(text_emotion, speech_emotion, face_emotion)
-    if dominant_emotion is None:
-        dominant_emotion = "neutral"
+    dominant_emotion = dominant_emotion or "neutral"
     st.session_state.last_emotion = dominant_emotion
-    st.write(f"Dominant emotion: {dominant_emotion}")
+    st.write(f"**🧭 Dominant Emotion:** {dominant_emotion}")
 
     suggestions = {
         "anger": "Take a deep breath and count to ten. Step away from the situation if needed.",
@@ -80,37 +78,38 @@ if text_input.strip() or audio_file or image_file:
     }
 
     prompt = prompt_generator.generate_prompt(dominant_emotion, text_input, st.session_state.chat_history)
-    response = llm_client.run(prompt)
+    response = llm_client.run(prompt, dominant_emotion)
     suggestion = suggestions.get(dominant_emotion.lower(), "")
-    full_response = f"{response}\n\nTherapeutic Suggestion: {suggestion}"
+    full_response = f"{response}\n\n**🧘 Therapeutic Suggestion:** {suggestion}"
 
     st.session_state.chat_history.append(("User", text_input))
     st.session_state.chat_history.append(("Bot", full_response))
 
+# Display chat history
 def display_chat_history():
+    st.subheader("🗨️ Conversation")
     for speaker, message in st.session_state.chat_history:
         if speaker == "User":
-            st.markdown(f"**You:** {message}", use_container_width=True)
+            st.markdown(f"**You:** {message}")
         else:
-            st.markdown(f"**Chatbot:** {message}", use_container_width=True)
+            st.markdown(f"**Chatbot:** {message}")
 
-st.subheader("Conversation")
 display_chat_history()
 
-follow_up_input = st.text_input("How are you feeling now? (Follow-up message)")
-if st.button("Continue Conversation") and follow_up_input.strip():
-    new_text_emotion = text_detector.predict(follow_up_input)
-    st.write(f"Detected emotion from follow-up text: {new_text_emotion}")
+# Follow-up input
+follow_up_input = st.text_input("💭 How are you feeling now? (Follow-up message)")
 
-    updated_emotion = emotion_fusion.fuse_emotions(new_text_emotion, None, None)
-    if updated_emotion is None:
-        updated_emotion = "neutral"
+if st.button("🔁 Continue Conversation") and follow_up_input.strip():
+    new_text_emotion = text_detector.predict(follow_up_input)
+    st.write(f"**📝 Follow-up Text Emotion:** {new_text_emotion}")
+
+    updated_emotion = emotion_fusion.fuse_emotions(new_text_emotion, None, None) or "neutral"
     st.session_state.last_emotion = updated_emotion
 
     prompt = prompt_generator.generate_prompt(updated_emotion, follow_up_input, st.session_state.chat_history)
-    updated_response = llm_client.run(prompt)
+    updated_response = llm_client.run(prompt, updated_emotion)
     new_suggestion = suggestions.get(updated_emotion.lower(), "")
-    full_updated_response = f"{updated_response}\n\nTherapeutic Suggestion: {new_suggestion}"
+    full_updated_response = f"{updated_response}\n\n**🧘 Therapeutic Suggestion:** {new_suggestion}"
 
     st.session_state.chat_history.append(("User", follow_up_input))
     st.session_state.chat_history.append(("Bot", full_updated_response))
