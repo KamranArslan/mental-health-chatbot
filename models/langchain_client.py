@@ -1,20 +1,30 @@
 import os
+import logging
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
+from langchain.schema import SystemMessage
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class LangChainClient:
+    """
+    A chatbot client using LangChain and Groq API for supportive mental health interactions.
+    """
+
     def __init__(self):
-        # Load environment variables and check for missing GROQ_API_KEY
+        # Load environment variables
         load_dotenv()
         self.api_key = os.getenv("GROQ_API_KEY")
-        
+
         if not self.api_key:
             raise ValueError("GROQ_API_KEY not found in environment variables")
 
-        # Initialize the Groq LLM
+        # Initialize Groq LLM
         self.llm = ChatGroq(
             api_key=self.api_key,
             model_name="llama-3.3-70b-versatile",
@@ -22,62 +32,67 @@ class LangChainClient:
             max_tokens=500,
             top_p=0.9
         )
-        
+
         # Initialize conversation memory
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             return_messages=True
         )
-        
-        # Create a chat prompt template that includes the conversation history and dominant emotion
+
+        # Prompt template including dominant emotion and message history
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a supportive and empathetic mental health chatbot. "
-                      "You provide therapeutic responses based on the user's emotional state. "
-                      "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
-                      "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
-                      "The user's dominant emotion is: {dominant_emotion}"),
+                       "You provide therapeutic responses based on the user's emotional state. "
+                       "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
+                       "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
+                       "The user's dominant emotion is: {dominant_emotion}"),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}")
         ])
-        
-        # Create a chain that combines the prompt, memory, and LLM
+
+        # Initialize the LangChain LLMChain
         self.chain = LLMChain(
             llm=self.llm,
             memory=self.memory,
             prompt=self.prompt
         )
-    
-    def run(self, user_input, dominant_emotion=None):
+
+    def run(self, user_input: str, dominant_emotion: str = "neutral") -> str:
         """
-        Process user input through the LangChain chain with memory.
-        
+        Process user input through the LangChain chain.
+
         Args:
-            user_input (str): The user's message
-            dominant_emotion (str): The dominant emotion detected (optional)
-            
+            user_input (str): The user's message.
+            dominant_emotion (str): The detected dominant emotion (default is "neutral").
+
         Returns:
-            str: The AI's response
+            str: The AI-generated supportive response.
         """
         try:
-            if dominant_emotion:
-                # Only add dominant emotion to memory if it's provided
-                self.memory.chat_memory.add_message("system", f"Dominant emotion: {dominant_emotion}")
+            # Ensure dominant emotion is recorded
+            self.memory.chat_memory.add_message(SystemMessage(content=f"Dominant emotion: {dominant_emotion}"))
 
-            # Run the chain with the user input
-            response = self.chain.invoke({"input": user_input})
-            return response["text"]
+            # Run the chain
+            response = self.chain.invoke({
+                "input": user_input,
+                "dominant_emotion": dominant_emotion
+            })
+
+            return response if isinstance(response, str) else response.get("text", "I'm here for you.")
         except Exception as e:
-            return f"I apologize, but I'm having trouble generating a response right now. Error: {str(e)}"
-    
-    def get_conversation_history(self):
+            logger.error("Error in LangChainClient.run: %s", str(e))
+            return "I'm sorry, I'm having trouble generating a response right now. Please try again shortly."
+
+    def get_conversation_history(self) -> list:
         """
-        Return the conversation history for debugging or display purposes.
-        
+        Return the conversation history.
+
         Returns:
-            list: The conversation history as a list of messages
+            list: List of formatted conversation messages.
         """
-        # Format the conversation history in a more human-readable format
         formatted_history = []
         for message in self.memory.chat_memory.messages:
-            formatted_history.append(f"{message['role']}: {message['content']}")
+            role = getattr(message, 'type', 'unknown')
+            content = getattr(message, 'content', '')
+            formatted_history.append(f"{role.capitalize()}: {content}")
         return formatted_history
