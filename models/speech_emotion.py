@@ -18,6 +18,9 @@ class SpeechEmotionDetector:
         mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
         mel_db = librosa.power_to_db(mel_spec, ref=np.max)
         
+        # Check if mel_db shape is correct
+        print(f"Extracted Mel Spectrogram Shape: {mel_db.shape}")
+        
         # Resize or pad spectrogram to 128x128
         if mel_db.shape[1] < 128:
             mel_db = np.pad(mel_db, ((0, 0), (0, 128 - mel_db.shape[1])), mode='constant')
