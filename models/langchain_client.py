@@ -41,11 +41,13 @@ class LangChainClient:
 
         # Prompt template including dominant emotion and message history
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a supportive and empathetic mental health chatbot. "
-                       "You provide therapeutic responses based on the user's emotional state. "
-                       "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
-                       "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
-                       "The user's dominant emotion is: {dominant_emotion}"),
+            ("system", (
+                "You are a supportive and empathetic mental health chatbot. "
+                "You provide therapeutic responses based on the user's emotional state. "
+                "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
+                "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
+                "The user's dominant emotion is: {dominant_emotion}"
+            )),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}")
         ])
@@ -69,17 +71,20 @@ class LangChainClient:
             str: The AI-generated supportive response.
         """
         try:
-            # Add emotion to memory for better context
-            self.memory.chat_memory.add_message(SystemMessage(content=f"Dominant emotion: {dominant_emotion}"))
+            # Add dominant emotion to system memory for better context
+            self.memory.chat_memory.add_message(
+                SystemMessage(content=f"Dominant emotion: {dominant_emotion}")
+            )
+
+            logger.info("Running with input: '%s' | emotion: '%s'", user_input, dominant_emotion)
 
             # Run the chain
-            logger.info("Running with input: %s | emotion: %s", user_input, dominant_emotion)
             response = self.chain.invoke({
                 "input": user_input,
                 "dominant_emotion": dominant_emotion
             })
 
-            # Return based on response type
+            # Handle different possible response types
             if isinstance(response, str):
                 return response
             elif isinstance(response, dict):
@@ -91,7 +96,10 @@ class LangChainClient:
 
         except Exception as e:
             logger.error("Error in LangChainClient.run: %s", str(e))
-            return "I'm sorry, I'm having trouble generating a response right now. Please try again shortly."
+            return (
+                "I'm sorry, I'm having trouble generating a response right now. "
+                "Please try again shortly."
+            )
 
     def get_conversation_history(self) -> list:
         """
