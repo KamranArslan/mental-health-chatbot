@@ -18,7 +18,6 @@ class LangChainClient:
         load_dotenv()
         self.api_key = os.getenv("GROQ_API_KEY")
 
-        # Check if the API key is missing
         if not self.api_key:
             logger.error("❌ GROQ_API_KEY is missing from environment variables.")
             raise ValueError("❌ GROQ_API_KEY is missing from environment variables.")
@@ -59,6 +58,9 @@ class LangChainClient:
                 ]
             )
             logger.info("✅ Prompt template defined successfully.")
+
+            # Log input variables for LLMChain
+            logger.debug("Initializing LLMChain with input variables: %s", ["input", "dominant_emotion"])
 
             # ✅ Define the chain
             logger.info("Initializing LLMChain...")
