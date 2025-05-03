@@ -5,7 +5,7 @@ from langchain_groq import ChatGroq
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
-from langchain.schema import AIMessage, HumanMessage, SystemMessage
+from langchain.schema import AIMessage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -39,9 +39,10 @@ class LangChainClient:
             return_messages=True
         )
 
-        # ✅ FIX: Explicitly specify input variables
-        self.prompt = ChatPromptTemplate.from_messages(
-            [
+        # ✅ CORRECT prompt definition
+        self.prompt = ChatPromptTemplate(
+            input_variables=["input", "dominant_emotion"],
+            messages=[
                 ("system", (
                     "You are a supportive and empathetic mental health chatbot. "
                     "You provide therapeutic responses based on the user's emotional state. "
@@ -51,8 +52,7 @@ class LangChainClient:
                 )),
                 MessagesPlaceholder(variable_name="chat_history"),
                 ("human", "{input}")
-            ],
-            input_variables=["input", "dominant_emotion"]  # ✅ THIS LINE FIXES THE ERROR
+            ]
         )
 
         # Create chain
@@ -80,6 +80,7 @@ class LangChainClient:
                 "dominant_emotion": dominant_emotion
             })
 
+            # Return based on response type
             if isinstance(response, dict):
                 return response.get("text", "I'm here for you.").strip()
             elif isinstance(response, str):
