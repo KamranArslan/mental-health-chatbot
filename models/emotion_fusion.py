@@ -13,9 +13,10 @@ class EmotionFusion:
             emotions.append(speech_emotion)
         if face_emotion is not None:
             emotions.append(face_emotion)
-            
+        
         if not emotions:
-            return "neutral"  # Default emotion if no inputs
+            print("No emotions detected!")
+            return "neutral"  # Default emotion if none detected
             
         # If only one emotion is available, return it directly
         if len(emotions) == 1:
@@ -24,5 +25,5 @@ class EmotionFusion:
         # Use majority voting for multiple emotions
         emotion_counts = Counter(emotions)
         dominant_emotion = emotion_counts.most_common(1)[0][0]
-        
-        return dominant_emotion 
+
+        return dominant_emotion
