@@ -39,18 +39,21 @@ class LangChainClient:
             return_messages=True
         )
 
-        # Define prompt
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", (
-                "You are a supportive and empathetic mental health chatbot. "
-                "You provide therapeutic responses based on the user's emotional state. "
-                "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
-                "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
-                "The user's dominant emotion is: {dominant_emotion}"
-            )),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "{input}")
-        ])
+        # ✅ FIX: Explicitly specify input variables
+        self.prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", (
+                    "You are a supportive and empathetic mental health chatbot. "
+                    "You provide therapeutic responses based on the user's emotional state. "
+                    "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
+                    "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
+                    "The user's dominant emotion is: {dominant_emotion}"
+                )),
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("human", "{input}")
+            ],
+            input_variables=["input", "dominant_emotion"]  # ✅ THIS LINE FIXES THE ERROR
+        )
 
         # Create chain
         self.chain = LLMChain(
@@ -77,7 +80,6 @@ class LangChainClient:
                 "dominant_emotion": dominant_emotion
             })
 
-            # Extract response text safely
             if isinstance(response, dict):
                 return response.get("text", "I'm here for you.").strip()
             elif isinstance(response, str):
