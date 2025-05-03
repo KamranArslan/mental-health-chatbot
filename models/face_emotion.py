@@ -4,38 +4,52 @@ import cv2
 
 class FaceEmotionDetector:
     def __init__(self, model_path="models/face_model.h5"):
+        # Load pre-trained facial emotion recognition model
         self.model = tf.keras.models.load_model(model_path)
+        
+        # Define emotion labels (order must match model's output)
         self.emotions = ["anger", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"]
+        
+        # Load OpenCV face detection model (Haar cascade)
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         
     def preprocess_image(self, image):
-        # Convert to grayscale
+        # Convert image to grayscale (required for face detection)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Detect faces
+        # Detect faces in the image
         faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
         
+        # If no faces are detected, return None
         if len(faces) == 0:
             return None
             
-        # Get the first face
+        # Use the first detected face (x, y, width, height)
         x, y, w, h = faces[0]
         face = gray[y:y+h, x:x+w]
         
-        # Resize to model input size (adjust size based on your model's requirements)
+        # Resize face to match model's input size (48x48 for most models)
         face = cv2.resize(face, (48, 48))
         
-        # Normalize
+        # Normalize pixel values
         face = face / 255.0
         
-        # Reshape for model input
+        # Reshape to match model's expected input shape: (batch_size, height, width, channels)
         return face.reshape(1, 48, 48, 1)
     
     def predict(self, image):
+        # Preprocess the image
         processed_image = self.preprocess_image(image)
+        
+        # If no face detected, return 'neutral' emotion by default
         if processed_image is None:
-            return "neutral"  # Default emotion if no face detected
-            
+            return "neutral"
+        
+        # Predict emotion probabilities
         predictions = self.model.predict(processed_image)
+        
+        # Get index of the highest probability
         predicted_class = np.argmax(predictions[0])
+        
+        # Return the corresponding emotion label
         return self.emotions[predicted_class]
