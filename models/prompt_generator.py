@@ -1,5 +1,6 @@
 class PromptGenerator:
     def __init__(self):
+        # Define emotion-based prompts with empathetic and context-aware responses
         self.emotion_prompts = {
             "anger": (
                 "I notice you're feeling angry. Would you like to talk about what's causing this anger? "
@@ -44,24 +45,30 @@ class PromptGenerator:
 
     def generate_prompt(self, emotion, user_input="", previous_conversation=""):
         """
-        Generate a prompt incorporating the detected emotion, user input, and conversation history
-        to send to the LangChain client for response generation.
+        Generate a context-aware, empathetic prompt incorporating detected emotion, user input, 
+        and conversation history. It is designed for use in a chatbot system like LangChain in a 
+        Streamlit app.
 
         Args:
-            emotion (str): The detected dominant emotion.
-            user_input (str): The user's message (text, speech transcription, or summary of image input).
-            previous_conversation (str): The prior conversation history to maintain context.
+            emotion (str): The detected dominant emotion from the user input.
+            user_input (str): The user's most recent message (text, speech transcription, etc.).
+            previous_conversation (str): A string containing prior conversation history.
 
         Returns:
-            str: A context-aware, empathetic prompt tailored for LangChain.
+            str: A detailed, emotionally-sensitive prompt tailored for the LangChain system.
         """
-        # Use neutral prompt if emotion not found
+        # Check for valid emotion, default to 'neutral' if not found
         base_prompt = self.emotion_prompts.get(emotion, self.emotion_prompts["neutral"])
 
+        # Construct the prompt
         if previous_conversation:
-            return f"{base_prompt}\n\n{previous_conversation}\n\nUser: {user_input}"
+            # Include previous conversation if available
+            prompt = f"{base_prompt}\n\nPrevious conversation:\n{previous_conversation}\n\nUser: {user_input}"
+        elif user_input:
+            # If no previous conversation, use only user input
+            prompt = f"{base_prompt}\n\nUser: {user_input}"
+        else:
+            # If no user input, just return the base prompt
+            prompt = base_prompt
 
-        if user_input:
-            return f"{base_prompt}\n\nUser: {user_input}"
-
-        return base_prompt
+        return prompt
