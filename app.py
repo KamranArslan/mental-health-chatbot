@@ -30,7 +30,7 @@ if "chat_history" not in st.session_state:
 if "last_emotion" not in st.session_state:
     st.session_state.last_emotion = "neutral"
 
-# Suggestions
+# Suggestions based on emotions
 suggestions = {
     "anger": "Take a deep breath and count to ten. Step away from the situation if needed.",
     "disgust": "Pause and reflect. Try to reframe or distance from the triggering situation.",
@@ -48,10 +48,13 @@ audio_file = st.file_uploader("🎙️ Upload audio (optional)", type=["mp3", "w
 image_file = st.file_uploader("🖼️ Upload image (optional)", type=["jpg", "png"])
 
 # --- Input Submission Button ---
-if st.button("▶️ Submit Initial Message") and text_input.strip():
-    text_emotion = text_detector.predict(text_input)
-    st.write(f"**📝 Text Emotion:** `{text_emotion}`")
+if st.button("▶️ Submit Initial Message") and (text_input.strip() or audio_file or image_file):
+    # Detect text emotion if text is provided
+    text_emotion = text_detector.predict(text_input) if text_input.strip() else None
+    if text_emotion:
+        st.write(f"**📝 Text Emotion:** `{text_emotion}`")
 
+    # Detect speech emotion if audio is provided
     speech_emotion = None
     if audio_file:
         try:
@@ -62,7 +65,9 @@ if st.button("▶️ Submit Initial Message") and text_input.strip():
             st.write(f"**🎧 Speech Emotion:** `{speech_emotion}`")
         except Exception as e:
             st.error(f"⚠️ Audio error: {e}")
+            speech_emotion = None
 
+    # Detect face emotion if image is provided
     face_emotion = None
     if image_file:
         try:
@@ -73,19 +78,21 @@ if st.button("▶️ Submit Initial Message") and text_input.strip():
             st.write(f"**📷 Face Emotion:** `{face_emotion}`")
         except Exception as e:
             st.error(f"⚠️ Image error: {e}")
+            face_emotion = None
 
-    # Fuse emotions & generate response
+    # Fuse emotions and determine dominant emotion
     dominant_emotion = emotion_fusion.fuse_emotions(text_emotion, speech_emotion, face_emotion) or "neutral"
     st.session_state.last_emotion = dominant_emotion
     st.write(f"**🧭 Dominant Emotion:** `{dominant_emotion}`")
 
-    # Generate a prompt for LangChain
+    # Generate a prompt for the language model
     prompt = prompt_generator.generate_prompt(dominant_emotion, text_input, st.session_state.chat_history)
-    # Correctly pass `input` and `dominant_emotion` as separate variables
+    # Get response from LangChainClient
     response = llm_client.run(user_input=text_input, dominant_emotion=dominant_emotion)
     suggestion = suggestions.get(dominant_emotion.lower(), "")
     full_response = f"{response}\n\n**🧘 Therapeutic Suggestion:** {suggestion}"
 
+    # Update chat history
     st.session_state.chat_history.append(("You", text_input))
     st.session_state.chat_history.append(("Chatbot", full_response))
 
