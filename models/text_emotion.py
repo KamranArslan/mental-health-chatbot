@@ -18,12 +18,16 @@ class TextEmotionDetector:
     def predict(self, text):
         # Tokenize input and move to device
         inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+        print(f"Tokenized Input: {inputs}")  # Log tokenized input
+        
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         # Predict emotion
         with torch.no_grad():
             outputs = self.model(**inputs)
             predictions = torch.softmax(outputs.logits, dim=1)
-            predicted_class = torch.argmax(predictions, dim=1).item()
+            print(f"Model Predictions: {predictions}")  # Log predictions
 
+            predicted_class = torch.argmax(predictions, dim=1).item()
+        
         return self.emotions[predicted_class]
