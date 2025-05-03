@@ -81,20 +81,21 @@ class LangChainClient:
 
             # Attempt to extract text response safely
             if isinstance(response, str):
+                logger.info("Response from LangChain: %s", response.strip())
                 return response.strip()
             elif isinstance(response, dict):
+                logger.info("Response from LangChain (dict): %s", response.get("text", "No response"))
                 return response.get("text", "I'm here for you.").strip()
             elif isinstance(response, AIMessage):
+                logger.info("Response from LangChain (AIMessage): %s", response.content.strip())
                 return response.content.strip()
             else:
+                logger.warning("Unexpected response type: %s", type(response))
                 return str(response).strip()
 
         except Exception as e:
             logger.error("❌ Error in LangChainClient.run: %s", str(e))
-            return (
-                "I'm sorry, I'm having trouble generating a response right now. "
-                "Please try again shortly."
-            )
+            return f"Error occurred: {str(e)}"  # Return more detailed error for debugging
 
     def get_conversation_history(self) -> list:
         """
