@@ -76,6 +76,7 @@ class LangChainClient:
                 SystemMessage(content=f"Dominant emotion: {dominant_emotion}")
             )
 
+            # Log input and emotion for debugging
             logger.info("Running with input: '%s' | emotion: '%s'", user_input, dominant_emotion)
 
             # Run the chain
