@@ -5,7 +5,7 @@ from langchain_groq import ChatGroq
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
-from langchain.schema import AIMessage
+from langchain.schema import AIMessage, HumanMessage, SystemMessage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,29 +33,26 @@ class LangChainClient:
             top_p=0.9
         )
 
-        # Initialize conversation memory
+        # Initialize memory
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             return_messages=True
         )
 
-        # Prompt template with emotion context
-        self.prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", (
-                    "You are a supportive and empathetic mental health chatbot. "
-                    "You provide therapeutic responses based on the user's emotional state. "
-                    "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
-                    "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
-                    "The user's dominant emotion is: {dominant_emotion}"
-                )),
-                MessagesPlaceholder(variable_name="chat_history"),
-                ("human", "{input}")
-            ],
-            input_variables=["input", "dominant_emotion"]
-        )
+        # Define prompt
+        self.prompt = ChatPromptTemplate.from_messages([
+            ("system", (
+                "You are a supportive and empathetic mental health chatbot. "
+                "You provide therapeutic responses based on the user's emotional state. "
+                "Respond with warmth and clarity, offering gentle encouragement, validation, and practical coping strategies when appropriate. "
+                "Avoid giving medical advice or diagnoses. Keep your responses brief, supportive, and focused on helping the user feel heard and understood. "
+                "The user's dominant emotion is: {dominant_emotion}"
+            )),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{input}")
+        ])
 
-        # LLM chain with prompt and memory
+        # Create chain
         self.chain = LLMChain(
             llm=self.llm,
             memory=self.memory,
@@ -75,20 +72,17 @@ class LangChainClient:
         """
         try:
             logger.info("Running with input: '%s' | emotion: '%s'", user_input, dominant_emotion)
-
             response = self.chain.invoke({
                 "input": user_input,
                 "dominant_emotion": dominant_emotion
             })
 
-            if isinstance(response, str):
-                logger.info("Response from LangChain (str): %s", response.strip())
-                return response.strip()
-            elif isinstance(response, dict):
-                logger.info("Response from LangChain (dict): %s", response.get("text", "No response"))
+            # Extract response text safely
+            if isinstance(response, dict):
                 return response.get("text", "I'm here for you.").strip()
+            elif isinstance(response, str):
+                return response.strip()
             elif isinstance(response, AIMessage):
-                logger.info("Response from LangChain (AIMessage): %s", response.content.strip())
                 return response.content.strip()
             else:
                 logger.warning("Unexpected response type: %s", type(response))
