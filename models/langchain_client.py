@@ -39,7 +39,7 @@ class LangChainClient:
             return_messages=True
         )
 
-        # Prompt template including dominant emotion and message history
+        # Prompt template with emotion context
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", (
                 "You are a supportive and empathetic mental health chatbot. "
@@ -52,7 +52,6 @@ class LangChainClient:
             ("human", "{input}")
         ])
 
-        # Initialize the LangChain LLMChain
         self.chain = LLMChain(
             llm=self.llm,
             memory=self.memory,
@@ -71,11 +70,6 @@ class LangChainClient:
             str: The AI-generated supportive response.
         """
         try:
-            # Add dominant emotion to system memory for better context
-            self.memory.chat_memory.add_message(
-                SystemMessage(content=f"Dominant emotion: {dominant_emotion}")
-            )
-
             # Log input and emotion for debugging
             logger.info("Running with input: '%s' | emotion: '%s'", user_input, dominant_emotion)
 
@@ -85,18 +79,18 @@ class LangChainClient:
                 "dominant_emotion": dominant_emotion
             })
 
-            # Handle different possible response types
+            # Attempt to extract text response safely
             if isinstance(response, str):
-                return response
+                return response.strip()
             elif isinstance(response, dict):
-                return response.get("text", "I'm here for you.")
+                return response.get("text", "I'm here for you.").strip()
             elif isinstance(response, AIMessage):
-                return response.content
+                return response.content.strip()
             else:
-                return str(response)
+                return str(response).strip()
 
         except Exception as e:
-            logger.error("Error in LangChainClient.run: %s", str(e))
+            logger.error("❌ Error in LangChainClient.run: %s", str(e))
             return (
                 "I'm sorry, I'm having trouble generating a response right now. "
                 "Please try again shortly."
