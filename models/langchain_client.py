@@ -1,19 +1,20 @@
+import os
+import logging
+from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
-from langchain.memory import ConversationBufferMemory
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_groq import ChatGroq
-import os
-from dotenv import load_dotenv
-import logging
 
-# Logging config
-logging.basicConfig(level=logging.DEBUG)  # Set to DEBUG for detailed logs
+# Logging configuration
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class LangChainClient:
     def __init__(self):
         logger.info("Initializing LangChainClient...")
-        
+
+        # Load environment variables
         load_dotenv()
         self.api_key = os.getenv("GROQ_API_KEY")
 
@@ -22,20 +23,11 @@ class LangChainClient:
             raise ValueError("❌ GROQ_API_KEY is missing from environment variables.")
         else:
             logger.info("✅ GROQ_API_KEY found in environment variables.")
-        
-        # Initialize memory first (no issues expected here)
-        try:
-            logger.info("Initializing memory...")
-            self.memory = ConversationBufferMemory(
-                memory_key="chat_history",
-                return_messages=True
-            )
-            logger.info("✅ Memory initialized.")
-        except Exception as e:
-            logger.error(f"❌ Error initializing memory: {e}")
-            raise
-        
-        # Now initialize prompt
+
+        # Initialize conversation history as a list of message objects
+        self.history = []
+
+        # Define prompt template with system message, history, and user input
         try:
             logger.info("Defining prompt template...")
             self.prompt = ChatPromptTemplate.from_messages(
@@ -45,7 +37,7 @@ class LangChainClient:
                         "Provide brief, calming responses. Do not give medical advice. "
                         "The user's dominant emotion is: {dominant_emotion}"
                     )),
-                    MessagesPlaceholder(variable_name="chat_history"),
+                    MessagesPlaceholder(variable_name="history"),
                     ("human", "{input}")
                 ]
             )
@@ -54,29 +46,28 @@ class LangChainClient:
             logger.error(f"❌ Error defining prompt template: {e}")
             raise
 
-        # Now, try initializing the ChatGroq model alone
+        # Initialize the language model
         try:
             logger.info("Loading LLM model...")
             self.llm = ChatGroq(
                 api_key=self.api_key,
-                model_name="llama-3-70b-8192",  # Double-check model name on Groq
+                model_name="llama3-70b-8192",
                 temperature=0.7,
                 max_tokens=500,
-                top_p=0.9
+                model_kwargs={"top_p": 0.9}
             )
             logger.info("✅ Model loaded successfully.")
         except Exception as e:
             logger.error(f"❌ Error loading LLM model: {e}")
             raise
 
-        # Finally, initialize LLMChain
+        # Initialize LLMChain without memory
         try:
             logger.info("Initializing LLMChain...")
             self.chain = LLMChain(
                 llm=self.llm,
-                memory=self.memory,
                 prompt=self.prompt,
-                input_variables=["input", "dominant_emotion"]  # ✅ Required!
+                verbose=True
             )
             logger.info("✅ LLMChain initialized successfully.")
         except Exception as e:
@@ -86,31 +77,31 @@ class LangChainClient:
     def run(self, user_input: str, dominant_emotion: str = "neutral") -> str:
         try:
             logger.info("Processing user input: %s (emotion: %s)", user_input, dominant_emotion)
-
-            # Debugging: Check the types of user input and emotion
             logger.debug("User input type: %s", type(user_input))
             logger.debug("Dominant emotion type: %s", type(dominant_emotion))
 
-            # Attempt to invoke the LLM chain
-            response = self.chain.invoke({
-                "input": user_input,
-                "dominant_emotion": dominant_emotion
-            })
+            # Invoke the chain with current input, emotion, and history
+            response = self.chain.invoke(
+                {
+                    "input": user_input,
+                    "dominant_emotion": dominant_emotion,
+                    "history": self.history
+                }
+            )
 
-            # Inspect the structure of the response
             logger.debug("Response received: %s", response)
-            if isinstance(response, dict):
-                logger.debug("Response type is dict, extracting text.")
-                return response.get("text", "I'm here for you.").strip()
-            elif isinstance(response, str):
-                logger.debug("Response type is string.")
-                return response.strip()
-            elif isinstance(response, AIMessage):
-                logger.debug("Response type is AIMessage.")
-                return response.content.strip()
-            else:
-                logger.warning("Unknown response type: %s", type(response))
-                return "I'm here for you. Please share more with me."
+            # Extract the text from the response dictionary
+            bot_response = response.get("text", "").strip()
+
+            # Update conversation history
+            self.history.append(HumanMessage(content=user_input))
+            self.history.append(AIMessage(content=bot_response))
+
+            # Limit history to last 10 messages (5 exchanges)
+            if len(self.history) > 10:
+                self.history = self.history[-10:]
+
+            return bot_response
         except Exception as e:
             logger.error("❌ Error in LangChainClient.run: %s", str(e))
             return f"Error occurred: {str(e)}"
@@ -118,10 +109,10 @@ class LangChainClient:
     def get_conversation_history(self):
         logger.info("Retrieving conversation history...")
         formatted = []
-        for msg in self.memory.chat_memory.messages:
-            role = getattr(msg, 'type', 'unknown')
-            content = getattr(msg, 'content', '')
-            formatted.append(f"{role.capitalize()}: {content}")
-        
+        for msg in self.history:
+            if isinstance(msg, HumanMessage):
+                formatted.append(f"Human: {msg.content}")
+            elif isinstance(msg, AIMessage):
+                formatted.append(f"Assistant: {msg.content}")
         logger.debug("Conversation history: %s", formatted)
         return formatted
