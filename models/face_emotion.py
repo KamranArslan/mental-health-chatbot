@@ -22,7 +22,8 @@ class FaceEmotionDetector:
         
         # If no faces are detected, return None
         if len(faces) == 0:
-            return None
+            print("No face detected!")
+            return None  # Or return 'neutral' directly if preferred
             
         # Use the first detected face (x, y, width, height)
         x, y, w, h = faces[0]
