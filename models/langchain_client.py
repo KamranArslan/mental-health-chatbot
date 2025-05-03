@@ -81,7 +81,7 @@ class LangChainClient:
 
             # Attempt to extract text response safely
             if isinstance(response, str):
-                logger.info("Response from LangChain: %s", response.strip())
+                logger.info("Response from LangChain (str): %s", response.strip())
                 return response.strip()
             elif isinstance(response, dict):
                 logger.info("Response from LangChain (dict): %s", response.get("text", "No response"))
@@ -91,7 +91,7 @@ class LangChainClient:
                 return response.content.strip()
             else:
                 logger.warning("Unexpected response type: %s", type(response))
-                return str(response).strip()
+                return "I'm here for you. Please share more with me."  # Fallback response
 
         except Exception as e:
             logger.error("❌ Error in LangChainClient.run: %s", str(e))
