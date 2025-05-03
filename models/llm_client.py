@@ -23,9 +23,23 @@ class LLMClient:
                 temperature=0.5,
                 max_completion_tokens=300,
                 top_p=0.9,
-                stream=True
+                stream=True  # Stream flag enabled
             )
-            
-            return completion.choices[0].message.content
+
+            # Process the streamed response
+            response_content = ""
+            for chunk in completion:
+                response_content += chunk.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+            # Check if content was retrieved
+            if response_content.strip():
+                return response_content
+            else:
+                return "I apologize, but the response was empty. Please try again."
+        
         except Exception as e:
-            return f"I apologize, but I'm having trouble generating a response right now. Error: {str(e)}" 
+            # Log the error to the backend (optional for debugging)
+            # You could also log the error to a logging system if needed
+            print(f"Error occurred: {str(e)}")
+            # Return user-friendly error message
+            return f"I apologize, but I'm having trouble generating a response right now. Error: {str(e)}"
