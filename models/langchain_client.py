@@ -1,6 +1,5 @@
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
-from langchain.schema import AIMessage
 from langchain.memory import ConversationBufferMemory
 from langchain_groq import ChatGroq
 import os
@@ -23,28 +22,21 @@ class LangChainClient:
             raise ValueError("❌ GROQ_API_KEY is missing from environment variables.")
         else:
             logger.info("✅ GROQ_API_KEY found in environment variables.")
-
+        
+        # Initialize memory first (no issues expected here)
         try:
-            # ✅ Load model
-            logger.info("Loading LLM model...")
-            self.llm = ChatGroq(
-                api_key=self.api_key,
-                model_name="llama-3-70b-8192",  # Double-check model name on Groq
-                temperature=0.7,
-                max_tokens=500,
-                top_p=0.9
-            )
-            logger.info("✅ Model loaded successfully.")
-
-            # ✅ Initialize memory
             logger.info("Initializing memory...")
             self.memory = ConversationBufferMemory(
                 memory_key="chat_history",
                 return_messages=True
             )
             logger.info("✅ Memory initialized.")
-
-            # ✅ Define prompt template
+        except Exception as e:
+            logger.error(f"❌ Error initializing memory: {e}")
+            raise
+        
+        # Now initialize prompt
+        try:
             logger.info("Defining prompt template...")
             self.prompt = ChatPromptTemplate.from_messages(
                 [
@@ -57,12 +49,28 @@ class LangChainClient:
                     ("human", "{input}")
                 ]
             )
-            logger.info("✅ Prompt template defined successfully.")
+            logger.info("✅ Prompt template defined.")
+        except Exception as e:
+            logger.error(f"❌ Error defining prompt template: {e}")
+            raise
 
-            # Log input variables for LLMChain
-            logger.debug("Initializing LLMChain with input variables: %s", ["input", "dominant_emotion"])
+        # Now, try initializing the ChatGroq model alone
+        try:
+            logger.info("Loading LLM model...")
+            self.llm = ChatGroq(
+                api_key=self.api_key,
+                model_name="llama-3-70b-8192",  # Double-check model name on Groq
+                temperature=0.7,
+                max_tokens=500,
+                top_p=0.9
+            )
+            logger.info("✅ Model loaded successfully.")
+        except Exception as e:
+            logger.error(f"❌ Error loading LLM model: {e}")
+            raise
 
-            # ✅ Define the chain
+        # Finally, initialize LLMChain
+        try:
             logger.info("Initializing LLMChain...")
             self.chain = LLMChain(
                 llm=self.llm,
@@ -72,7 +80,7 @@ class LangChainClient:
             )
             logger.info("✅ LLMChain initialized successfully.")
         except Exception as e:
-            logger.error(f"❌ Error during initialization: {e}")
+            logger.error(f"❌ Error initializing LLMChain: {e}")
             raise
 
     def run(self, user_input: str, dominant_emotion: str = "neutral") -> str:
