@@ -79,8 +79,10 @@ if st.button("▶️ Submit Initial Message") and text_input.strip():
     st.session_state.last_emotion = dominant_emotion
     st.write(f"**🧭 Dominant Emotion:** `{dominant_emotion}`")
 
+    # Generate a prompt for LangChain
     prompt = prompt_generator.generate_prompt(dominant_emotion, text_input, st.session_state.chat_history)
-    response = llm_client.run(prompt, dominant_emotion)
+    # Correctly pass `input` and `dominant_emotion` as separate variables
+    response = llm_client.run(user_input=text_input, dominant_emotion=dominant_emotion)
     suggestion = suggestions.get(dominant_emotion.lower(), "")
     full_response = f"{response}\n\n**🧘 Therapeutic Suggestion:** {suggestion}"
 
@@ -110,7 +112,7 @@ if st.button("🔁 Continue Conversation") and followup_input.strip():
     st.session_state.last_emotion = updated_emotion
 
     prompt = prompt_generator.generate_prompt(updated_emotion, followup_input, st.session_state.chat_history)
-    response = llm_client.run(prompt, updated_emotion)
+    response = llm_client.run(user_input=followup_input, dominant_emotion=updated_emotion)
     suggestion = suggestions.get(updated_emotion.lower(), "")
     full_response = f"{response}\n\n**🧘 Therapeutic Suggestion:** {suggestion}"
 
