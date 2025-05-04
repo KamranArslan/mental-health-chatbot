@@ -1,42 +1,48 @@
 import os
 import gdown
 import torch
+from safetensors.torch import load_file
 from transformers import AutoTokenizer
-from safetensors.torch import load_file  # Importing safetensors for loading the model
 
 class TextEmotionDetector:
     def __init__(self, model_dir="models/text_model"):
-        # Google Drive file ID
+        # Path for downloading the model
         file_id = "1_fpbFoc22N_CGPKyMjrn-h7qiGfuMtW7"
         output_path = os.path.join(model_dir, "model.safetensors")
         os.makedirs(model_dir, exist_ok=True)
 
-        # Download model if not already present
+        # Download the model if not already present
         if not os.path.exists(output_path):
             print("Downloading model from Google Drive...")
             url = f"https://drive.google.com/uc?id={file_id}"
             gdown.download(url, output_path, quiet=False)
 
-        # Force CPU for compatibility
+        # Ensure we're using CPU
         self.device = torch.device("cpu")
 
-        # Load tokenizer from the pre-trained model directory
-        self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        # Check if the model file exists
+        print(f"Checking if model file exists at: {output_path}")
+        if not os.path.exists(output_path):
+            raise FileNotFoundError(f"Model file not found at {output_path}")
 
         # Load the model using safetensors
-        print("Loading model with safetensors...")
-        self.model = load_file(output_path, device=self.device)  # Use safetensors to load the model
-        self.model.eval()
+        print(f"Loading model from {output_path}")
+        try:
+            self.model = load_file(output_path, device=self.device)
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            raise
+
+        # Load the tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
 
         # Emotion labels
         self.emotions = ["anger", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"]
 
     def predict(self, text):
-        # Tokenize input
         inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-        # Make prediction
         with torch.no_grad():
             outputs = self.model(**inputs)
             predictions = torch.softmax(outputs.logits, dim=1)
