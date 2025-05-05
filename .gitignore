@@ -1,3 +1,4 @@
 .env
 
-models/model.safetensors 
+models/text_model/model.safetensors
+
