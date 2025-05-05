@@ -1,5 +1,7 @@
 import os
+import torch
 import gdown
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 class TextEmotionDetector:
     def __init__(self, model_dir="models/text_model", folder_id="16kzp5dCqddSM6nCZjZOF7fqSONwTKPyV"):
@@ -22,20 +24,24 @@ class TextEmotionDetector:
                 url = f"https://drive.google.com/uc?id={fileid}"
                 gdown.download(url, file_path, quiet=False)
 
-        # Now you can continue with your model loading and predictions as before
-        self.device = torch.device("cpu")
+        # Set the device to CPU explicitly
+        self.device = torch.device("cpu")  # Ensures only CPU is used
 
-        # Load the model and tokenizer (ensure files are downloaded properly)
+        # Check if model and tokenizer files are downloaded
         self.model = AutoModelForSequenceClassification.from_pretrained(model_dir, local_files_only=True)
-        self.model.to(self.device)
+        self.model.to(self.device)  # Move the model to CPU (ensures it's on the right device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
 
+        # Emotion labels
         self.emotions = ["anger", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"]
 
     def predict(self, text):
+        # Tokenize the input text
         inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+        # Move inputs to the correct device (CPU)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
+        # Predict emotion
         with torch.no_grad():
             outputs = self.model(**inputs)
             predictions = torch.softmax(outputs.logits, dim=1)
