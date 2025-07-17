@@ -2,9 +2,11 @@ import os
 import torch
 import gdown
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import safetensors  # Ensure installed: pip install safetensors
+
 
 class TextEmotionDetector:
-    def __init__(self, model_dir="models/text_model", folder_id="16kzp5dCqddSM6nCZjZOF7fqSONwTKPyV"):
+    def __init__(self, model_dir="models/text_model"):
         os.makedirs(model_dir, exist_ok=True)
 
         self.files = {
@@ -15,53 +17,76 @@ class TextEmotionDetector:
             'special_tokens_map.json': '1BtE2B07sy60fFkTuleyqCEY6IKwZsVK4'
         }
 
-        # Download files from Google Drive
+        # Download files if not present or if model file looks too small
         for filename, fileid in self.files.items():
             file_path = os.path.join(model_dir, filename)
-            if not os.path.exists(file_path) or (filename == 'model.safetensors' and os.path.getsize(file_path) < 100 * 1024 * 1024):  # Check for small model file
-                print(f"Downloading {filename} from Google Drive...")
+            if not os.path.exists(file_path) or (
+                filename == 'model.safetensors' and os.path.getsize(file_path) < 100 * 1024 * 1024
+            ):
+                print(f"📥 Downloading {filename}...")
                 url = f"https://drive.google.com/uc?id={fileid}"
                 try:
                     gdown.download(url, file_path, quiet=False)
                 except Exception as e:
-                    print(f"Failed to download {filename}: {e}")
+                    print(f"❌ Failed to download {filename}: {e}")
                     raise
 
-        # Verify file sizes
-        print("File sizes:")
+        # Check file sizes
+        print("\n✅ Downloaded file sizes:")
         for filename in self.files:
-            file_path = os.path.join(model_dir, filename)
-            file_size = os.path.getsize(file_path) / (1024 * 1024)  # Size in MB
-            print(f"  {filename}: {file_size:.2f} MB")
+            path = os.path.join(model_dir, filename)
+            size_mb = os.path.getsize(path) / (1024 * 1024)
+            print(f"  {filename}: {size_mb:.2f} MB")
 
-        # Set the device to CPU
+        # Set device (only CPU in this example)
         self.device = torch.device("cpu")
 
-        # Load model
+        # Load model (safetensors)
         try:
-            self.model = AutoModelForSequenceClassification.from_pretrained(model_dir, local_files_only=True)
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                model_dir,
+                local_files_only=True,
+                trust_remote_code=True,
+                use_safetensors=True  # Important for safetensors loading
+            )
             self.model.to(self.device)
-            print("Model loaded successfully")
+            print("✅ Model loaded successfully.")
         except Exception as e:
-            print(f"Error loading model: {e}")
+            print(f"❌ Error loading model: {e}")
             raise
 
         # Load tokenizer
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
-            print("Tokenizer loaded successfully")
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_dir,
+                local_files_only=True,
+                trust_remote_code=True
+            )
+            print("✅ Tokenizer loaded successfully.")
         except Exception as e:
-            print(f"Error loading tokenizer: {e}")
+            print(f"❌ Error loading tokenizer: {e}")
             raise
 
         # Emotion labels
         self.emotions = ["anger", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"]
 
     def predict(self, text):
+        if not text or not isinstance(text, str):
+            raise ValueError("Input text must be a non-empty string.")
+
+        # Tokenize input
         inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        # Predict
         with torch.no_grad():
             outputs = self.model(**inputs)
-            predictions = torch.softmax(outputs.logits, dim=1)
-            predicted_class = torch.argmax(predictions, dim=1).item()
-        return self.emotions[predicted_class]
+            probs = torch.softmax(outputs.logits, dim=1)
+            pred_class = torch.argmax(probs, dim=1).item()
+
+        return {
+            "text": text,
+            "predicted_emotion": self.emotions[pred_class],
+            "confidence": float(probs[0][pred_class]),
+            "all_probabilities": {emotion: float(p) for emotion, p in zip(self.emotions, probs[0])}
+        }
