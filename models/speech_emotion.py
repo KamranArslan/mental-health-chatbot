@@ -5,8 +5,7 @@ import librosa
 class SpeechEmotionDetector:
     def __init__(self, model_path="models/speech_model.h5"):
         # Load pre-trained speech emotion recognition model
-        self.model = tf.keras.models.load_model(model_path)
-        
+        self.model = tf.keras.models.load_model(model_path, compile=False)        
         # Define emotion labels (must match model’s output order)
         self.emotions = ["anger", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"]
         
